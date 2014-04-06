@@ -3,7 +3,7 @@ require 'mechanize'
 require 'json'
 
 email = 'george@duffleman.co.uk'
-password = 'Twitter556789'
+password = '*******'
 totalpokes = 0
 puts email
 
@@ -72,7 +72,7 @@ loop do
 	end
 	if names.count >= 1
 		file = File.new('history.json', 'w+')
-		file.write(newhistory.to_json)
+		file.write(history.to_json)
 		file.close
 		puts "Writing to File"
 	end

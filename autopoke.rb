@@ -1,32 +1,82 @@
 require 'rubygems'
 require 'mechanize'
+require 'json'
 
-email = "EMAIL"
-pass = "PASSWORD"
+email = 'george@duffleman.co.uk'
+password = 'Twitter556789'
 totalpokes = 0
-print email + "\n"
+puts email
 
-agent = Mechanize.new
-agent.user_agent_alias = "Mac FireFox"
-agent.cookie_jar.clear!
-page = agent.get "http://m.facebook.com/"
-#puts page.title
+file = File.open('history.json', 'r')
+json_str = file.read
+file.close
+history = JSON.parse(json_str)
 
-login_form = page.forms.first
-login_form.field_with(:name => 'email').value = email
-login_form.field_with(:name => 'pass').value = pass
+agent = Mechanize.new()
+agent.user_agent_alias = "Mac Firefox"
+#agent.cookie_jar.clear!
+page = agent.get "http://m.facebook.com"
 
-result = login_form.submit(login_form.button_with(:name => 'login'))
+lf = page.forms.first
+lf.field_with(:name => 'email').value = email
+lf.field_with(:name => 'pass').value = password
+
+result = lf.submit(lf.button_with(:name => 'login'))
+while(result.title != 'Facebook') do
+	if  result.title == 'Remember Browser'
+		lf = result.forms.first
+		result = lf.submit(lf.button_with(:name => 'submit[Continue]'))
+		puts "Dealing with the Remember Browser Page..."
+	elsif result.title == "Review Recent Login"
+		lf = result.forms.first
+		result = lf.submit(lf.button_with(:name => "submit[Continue]"))
+		lf = result.forms.first
+		result = lf.submit(lf.button_with(:name => 'submit[This is Okay]'))
+		puts "Dealing with the Recent Logins Page..."
+	end
+end
+
+puts "==--+ BEGIN +--=="
+
 loop do
-	print "Scanning Page:"
-	pokes = agent.get "http://m.facebook.com/pokes"
-	puts pokes.title
-	pokes.links_with(:text => 'Poke back').each do |link|
-		totalpokes = totalpokes + 1
-		print("Poking! " + totalpokes.to_s + " Total")
+	puts "Scanning for Pokes: "
+	result = agent.get "http://m.facebook.com/pokes"
+	names = Array.new
+	result.search('#root ._55wr').children().each do |a|
+		name = a.search('._5hn8').text;
+		names.push name
+	end
+	names.reject! { |n| n.empty? or !n.include? "poked" }
+	names.map! do |n|
+		pos = n.index "poked"
+		pos = pos -2
+		n[0..pos]
+	end
+	puts "Found %i new pokes " % [names.count]
+	newhistory = Array.new
+	names.map do |name|
+		find = history.detect{ |poke| poke['name'] == name }
+		if find.nil?
+			poker = { "name" => name, "pokes" => 1 }
+			puts "Returning the poke to %s for the first time." % [name]
+		else
+			poker = { "name" => name, "pokes" => (find['pokes'] + 1)}
+			puts "Poking back %s for the %i time!" % [name, (find['pokes'] + 1)]
+		end
+		newhistory.push poker
+	end
+	history = newhistory # Dont reload from file, just override history
+	## Actually do the poking
+	result.links_with(:text => 'Poke back').each do |link|
 		link.click
 	end
-	#page2 = agent.click(result.link_with(:text => 'Try Again'))
-	#puts page2.body
-	sleep(5)
+	if names.count >= 1
+		file = File.new('history.json', 'w+')
+		file.write(newhistory.to_json)
+		file.close
+		puts "Writing to File"
+	end
+	puts "Sleeping for 1 minute."
+	puts "==--++--=="
+	sleep(60)
 end

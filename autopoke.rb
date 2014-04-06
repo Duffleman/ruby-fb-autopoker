@@ -3,7 +3,7 @@ require 'mechanize'
 require 'json'
 
 email = 'george@duffleman.co.uk'
-password = '*******'
+password = '********'
 totalpokes = 0
 puts email
 
@@ -52,31 +52,33 @@ loop do
 		pos = pos -2
 		n[0..pos]
 	end
-	puts "Found %i new pokes " % [names.count]
-	newhistory = Array.new
-	names.map do |name|
-		find = history.detect{ |poke| poke['name'] == name }
-		if find.nil?
-			poker = { "name" => name, "pokes" => 1 }
-			puts "Returning the poke to %s for the first time." % [name]
-		else
-			poker = { "name" => name, "pokes" => (find['pokes'] + 1)}
-			puts "Poking back %s for the %i time!" % [name, (find['pokes'] + 1)]
+	if names.count >= 1 
+		puts "Found %i new pokes " % [names.count]
+		newhistory = Array.new
+		names.map do |name|
+			find = history.detect{ |poke| poke['name'] == name }
+			if find.nil?
+				poker = { "name" => name, "pokes" => 1 }
+				puts "Poking back %s for the first time." % [name]
+			else
+				poker = { "name" => name, "pokes" => (find['pokes'] + 1)}
+				puts "Poking back %s for the %i time!" % [name, (find['pokes'] + 1)]
+			end
+			newhistory.push poker
 		end
-		newhistory.push poker
-	end
-	history = newhistory # Dont reload from file, just override history
-	## Actually do the poking
-	result.links_with(:text => 'Poke back').each do |link|
-		link.click
-	end
-	if names.count >= 1
+		history = newhistory # Dont reload from file, just override history
+		## Actually do the poking
+		result.links_with(:text => 'Poke back').each do |link|
+			link.click
+		end
 		file = File.new('history.json', 'w+')
 		file.write(history.to_json)
 		file.close
 		puts "Writing to File"
+	else
+		puts "No new pokes found."
 	end
-	puts "Sleeping for 1 minute."
+	puts "Sleeping for 30 seconds."
 	puts "==--++--=="
-	sleep(60)
+	sleep(30)
 end
